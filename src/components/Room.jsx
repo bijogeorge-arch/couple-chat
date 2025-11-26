@@ -544,7 +544,7 @@ const Room = () => {
                 {/* Waiting State */}
                 {waiting && !partnerDisconnected && (
                     <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
-                        <div className="text-center animate-fade-in bg-midnight/60 backdrop-blur-sm p-8 rounded-3xl border border-white/5 shadow-2xl">
+                        <div className="text-center animate-fade-in bg-midnight/60 backdrop-blur-sm p-8 rounded-3xl border border-white/5 shadow-2xl pointer-events-auto">
                             <div className="relative w-24 h-24 mx-auto mb-6">
                                 <div className="absolute inset-0 bg-rosegold/20 rounded-full animate-ping"></div>
                                 <div className="absolute inset-0 bg-rosegold/40 rounded-full animate-pulse"></div>
@@ -555,9 +555,22 @@ const Room = () => {
                             <h2 className="text-2xl md:text-3xl font-heading font-semibold mb-2 tracking-wide text-white">
                                 Waiting for your person...
                             </h2>
-                            <p className="text-lavender/80 font-cute text-lg">
-                                Share code: <span className="font-bold text-rosegold tracking-widest bg-white/10 px-2 py-1 rounded-lg select-all pointer-events-auto cursor-pointer">{roomId}</span>
+                            <p className="text-lavender/80 font-cute text-lg mb-6">
+                                Share code: <span className="font-bold text-rosegold tracking-widest bg-white/10 px-2 py-1 rounded-lg select-all cursor-pointer">{roomId}</span>
                             </p>
+
+                            {/* Manual Connect Button (Fallback) */}
+                            <button
+                                onClick={() => {
+                                    const partnerId = prompt("Enter partner's Socket ID (check console) or just click OK to retry if you know they are here:");
+                                    if (partnerId) callUser(partnerId, stream);
+                                    else if (partnerIdRef.current) callUser(partnerIdRef.current, stream);
+                                    else alert("No partner detected yet. Wait for them to join!");
+                                }}
+                                className="text-xs text-white/50 hover:text-white underline"
+                            >
+                                Stuck? Click to Retry Connection
+                            </button>
                         </div>
                     </div>
                 )}
