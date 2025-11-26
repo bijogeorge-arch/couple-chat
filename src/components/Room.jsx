@@ -38,6 +38,7 @@ const Room = () => {
     const containerRef = useRef();
     const cameraStreamRef = useRef(null); // Store original camera stream
     const screenStreamRef = useRef(null); // Store screen share stream
+    const audioContextRef = useRef(null); // Store audio context for mixing
 
     useEffect(() => {
         const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
@@ -115,6 +116,9 @@ const Room = () => {
             }
             if (screenStreamRef.current) {
                 screenStreamRef.current.getTracks().forEach(track => track.stop());
+            }
+            if (audioContextRef.current) {
+                audioContextRef.current.close();
             }
             if (timerRef.current) clearInterval(timerRef.current);
         };
@@ -248,39 +252,66 @@ const Room = () => {
 
     const startScreenShare = async () => {
         try {
-            const newScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            const newScreenStream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false
+                }
+            });
+
             screenStreamRef.current = newScreenStream;
             const screenVideoTrack = newScreenStream.getVideoTracks()[0];
             const screenAudioTrack = newScreenStream.getAudioTracks()[0];
+
+            console.log('Screen share started. Has audio:', !!screenAudioTrack);
 
             // Replace video track in peer connection
             if (connectionRef.current && connectionRef.current._pc) {
                 const senders = connectionRef.current._pc.getSenders();
                 const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 
-                if (videoSender && cameraStreamRef.current) {
-                    videoSender.replaceTrack(screenVideoTrack);
+                if (videoSender) {
+                    await videoSender.replaceTrack(screenVideoTrack);
+                    console.log('Video track replaced with screen share');
                 }
 
-                // Mix audio if screen has audio
-                if (screenAudioTrack && cameraStreamRef.current) {
-                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                    const destination = audioContext.createMediaStreamDestination();
+                // Handle audio mixing
+                const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
 
-                    // Add mic audio
-                    if (cameraStreamRef.current.getAudioTracks().length > 0) {
-                        const micSource = audioContext.createMediaStreamSource(new MediaStream([cameraStreamRef.current.getAudioTracks()[0]]));
-                        micSource.connect(destination);
-                    }
+                if (audioSender) {
+                    if (screenAudioTrack) {
+                        // Create audio context for mixing
+                        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                        const destination = audioContextRef.current.createMediaStreamDestination();
 
-                    // Add screen audio
-                    const screenSource = audioContext.createMediaStreamSource(new MediaStream([screenAudioTrack]));
-                    screenSource.connect(destination);
+                        // Add screen audio (movie/system audio)
+                        const screenSource = audioContextRef.current.createMediaStreamSource(
+                            new MediaStream([screenAudioTrack])
+                        );
+                        screenSource.connect(destination);
+                        console.log('Screen audio connected');
 
-                    const mixedAudioTrack = destination.stream.getAudioTracks()[0];
-                    const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
-                    if (audioSender) {
-                        audioSender.replaceTrack(mixedAudioTrack);
+                        // Add mic audio if available and not muted
+                        if (cameraStreamRef.current && cameraStreamRef.current.getAudioTracks().length > 0) {
+                            const micTrack = cameraStreamRef.current.getAudioTracks()[0];
+                            if (micTrack.enabled) {
+                                const micSource = audioContextRef.current.createMediaStreamSource(
+                                    new MediaStream([micTrack])
+                                );
+                                micSource.connect(destination);
+                                console.log('Microphone audio connected');
+                            }
+                        }
+
+                        // Replace audio track with mixed audio
+                        const mixedAudioTrack = destination.stream.getAudioTracks()[0];
+                        await audioSender.replaceTrack(mixedAudioTrack);
+                        console.log('Mixed audio track sent to partner');
+                    } else {
+                        console.log('No screen audio available, keeping microphone audio only');
+                        // Keep the existing microphone audio
                     }
                 }
             }
@@ -311,6 +342,13 @@ const Room = () => {
             screenStreamRef.current = null;
         }
 
+        // Close audio context
+        if (audioContextRef.current) {
+            audioContextRef.current.close();
+            audioContextRef.current = null;
+            console.log('Audio context closed');
+        }
+
         // Restore camera stream
         if (connectionRef.current && connectionRef.current._pc && cameraStreamRef.current) {
             const senders = connectionRef.current._pc.getSenders();
@@ -320,8 +358,14 @@ const Room = () => {
             const videoSender = senders.find(s => s.track && s.track.kind === 'video');
             const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
 
-            if (videoSender && videoTrack) videoSender.replaceTrack(videoTrack);
-            if (audioSender && audioTrack) audioSender.replaceTrack(audioTrack);
+            if (videoSender && videoTrack) {
+                videoSender.replaceTrack(videoTrack);
+                console.log('Video track restored to camera');
+            }
+            if (audioSender && audioTrack) {
+                audioSender.replaceTrack(audioTrack);
+                console.log('Audio track restored to microphone');
+            }
         }
 
         // Restore local video display
