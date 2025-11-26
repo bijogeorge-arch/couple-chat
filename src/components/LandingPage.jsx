@@ -87,7 +87,7 @@ const LandingPage = () => {
                                     onChange={(e) => setPartnerCode(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
                                     placeholder="HAVE A CODE?"
-                                    className="bg-transparent border-b border-white/20 text-white placeholder-gray-600 py-2 px-2 w-48 focus:outline-none focus:border-gold/60 transition-all duration-500 font-sans text-sm tracking-widest uppercase text-center"
+                                    className="bg-transparent border-b border-white/20 text-white placeholder-gray-600 placeholder:uppercase py-2 px-2 w-48 focus:outline-none focus:border-gold/60 transition-all duration-500 font-sans text-sm tracking-wide text-center"
                                 />
                                 <button
                                     onClick={joinRoom}
