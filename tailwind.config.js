@@ -7,17 +7,28 @@ export default {
     theme: {
         extend: {
             colors: {
+                // Legacy
                 blush: '#F8D7E3',
                 lavender: '#C9B3FF',
                 rosegold: '#E8A4A4',
                 midnight: '#1F1B2E',
                 peach: '#FFC7A5',
                 cream: '#FFF7F2',
+                // New "Dark Mode Elegance"
+                charcoal: '#0F1115',
+                'midnight-deep': '#0B0D17',
+                velvet: '#E11D48',
+                sienna: '#F97316',
+                gold: '#FCD34D',
+                'glass-sm': 'rgba(255, 255, 255, 0.05)',
+                'glass-md': 'rgba(255, 255, 255, 0.10)',
             },
             fontFamily: {
-                sans: ['Inter', 'sans-serif'],
-                heading: ['Poppins', 'sans-serif'],
+                sans: ['Lato', 'Inter', 'sans-serif'], // Prioritize Lato
+                heading: ['Playfair Display', 'Poppins', 'serif'], // Prioritize Playfair
                 cute: ['Quicksand', 'sans-serif'],
+                cinzel: ['Cinzel', 'serif'],
+                montserrat: ['Montserrat', 'sans-serif'],
             },
             animation: {
                 'heartbeat': 'heartbeat 3s infinite ease-in-out',
@@ -26,6 +37,9 @@ export default {
                 'twinkle': 'twinkle 4s ease-in-out infinite',
                 'float-bob': 'floatBob 6s ease-in-out infinite',
                 'fade-in-up': 'fadeInUp 1s ease-out forwards',
+                'fade-in-slow': 'fadeIn 1.5s ease-out forwards',
+                'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                'orb-float': 'orbFloat 20s infinite linear',
             },
             keyframes: {
                 heartbeat: {
@@ -56,6 +70,16 @@ export default {
                 fadeInUp: {
                     '0%': { opacity: '0', transform: 'translateY(20px)' },
                     '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                fadeIn: {
+                    '0%': { opacity: '0' },
+                    '100%': { opacity: '1' },
+                },
+                orbFloat: {
+                    '0%': { transform: 'translate(0, 0)' },
+                    '33%': { transform: 'translate(30px, -50px)' },
+                    '66%': { transform: 'translate(-20px, 20px)' },
+                    '100%': { transform: 'translate(0, 0)' },
                 }
             }
         },

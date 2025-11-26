@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Heart, Film, Lock, Camera, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Aperture, Shield, Zap, ArrowRight, Monitor, Lock } from 'lucide-react';
 
 const LandingPage = () => {
     const navigate = useNavigate();
@@ -18,113 +18,125 @@ const LandingPage = () => {
     };
 
     return (
-        <div className="min-h-screen w-full relative overflow-hidden font-sans text-midnight selection:bg-rosegold selection:text-white">
-            {/* Animated Mesh Gradient Background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-blush via-lavender to-peach animate-gradient bg-[length:400%_400%] -z-10" />
+        <div className="min-h-screen w-full relative overflow-hidden bg-charcoal text-white font-sans selection:bg-velvet selection:text-white">
 
-            {/* Overlay for softness */}
-            <div className="absolute inset-0 bg-white/10 backdrop-blur-[2px] -z-10" />
+            {/* Background Atmosphere */}
+            <div className="fixed inset-0 pointer-events-none -z-10 overflow-hidden">
+                {/* Deep Background */}
+                <div className="absolute inset-0 bg-charcoal" />
 
-            <div className="container mx-auto px-4 py-8 md:py-16 flex flex-col items-center justify-center min-h-screen space-y-16">
+                {/* Bokeh Orbs */}
+                <div className="absolute top-[-10%] left-[-10%] w-[40vw] h-[40vw] bg-velvet/20 rounded-full blur-[120px] animate-orb-float" />
+                <div className="absolute bottom-[-10%] right-[-10%] w-[35vw] h-[35vw] bg-gold/10 rounded-full blur-[100px] animate-orb-float" style={{ animationDelay: '-5s' }} />
+                <div className="absolute top-[40%] left-[60%] w-[25vw] h-[25vw] bg-red-900/20 rounded-full blur-[80px] animate-orb-float" style={{ animationDelay: '-10s' }} />
+
+                {/* Noise Texture Overlay (Optional for film grain feel) */}
+                <div className="absolute inset-0 opacity-[0.03] bg-[url('https://grainy-gradients.vercel.app/noise.svg')]" />
+            </div>
+
+            {/* Navigation (Minimal) */}
+            <nav className="absolute top-0 left-0 w-full p-8 flex justify-between items-center z-50">
+                <div className="text-2xl font-cinzel font-semibold tracking-widest text-white/90">
+                    LUMIÈRE
+                </div>
+                <div className="text-sm font-sans tracking-widest text-gray-400 uppercase">
+                    Private Beta
+                </div>
+            </nav>
+
+            {/* Main Content */}
+            <div className="container mx-auto px-6 min-h-screen flex flex-col items-center justify-center relative z-10 pt-20">
 
                 {/* Hero Section */}
-                <div className="w-full max-w-4xl bg-cream/30 backdrop-blur-2xl border border-white/40 rounded-[3rem] shadow-2xl p-8 md:p-12 flex flex-col items-center text-center animate-fade-in-up relative overflow-hidden">
-                    {/* Soft Glow behind illustration */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-96 bg-white/40 blur-[100px] rounded-full -z-10 pointer-events-none" />
+                <div className="w-full max-w-5xl flex flex-col items-center text-center mb-24 animate-fade-in-slow">
 
-                    {/* Illustration */}
-                    <div className="mb-8 relative group">
-                        <img
-                            src="/hero_illustration.png"
-                            alt="Couple on moon"
-                            className="w-64 h-64 md:w-80 md:h-80 object-contain drop-shadow-lg transition-transform duration-700 group-hover:scale-105"
-                        />
-                    </div>
-
-                    {/* Typography */}
-                    <h1 className="font-heading font-semibold text-3xl md:text-5xl mb-4 leading-tight text-midnight drop-shadow-sm">
-                        Closing the distance,<br /> one movie night at a time.
+                    {/* Headline */}
+                    <h1 className="font-heading text-5xl md:text-7xl lg:text-8xl font-light leading-[1.1] tracking-tight text-white mb-8 drop-shadow-2xl">
+                        Distance fades when the <br />
+                        <span className="italic text-white/90">lights go down.</span>
                     </h1>
-                    <p className="font-sans font-medium text-lg md:text-xl text-midnight/80 mb-10 max-w-2xl">
-                        Your private digital sanctuary. No links, no noise. Just the two of you.
+
+                    {/* Sub-headline */}
+                    <p className="font-sans text-sm md:text-base tracking-[0.2em] uppercase text-gray-400 mb-16 max-w-2xl leading-loose">
+                        Experience cinema, conversation, and connection in a private digital suite.
                     </p>
 
-                    {/* CTA Block */}
-                    <div className="flex flex-col md:flex-row items-center gap-6 w-full justify-center">
-                        {/* Primary Action */}
+                    {/* CTA Section */}
+                    <div className="flex flex-col md:flex-row items-center gap-12 w-full justify-center">
+
+                        {/* Primary Button */}
                         <button
                             onClick={createRoom}
-                            className="group relative bg-gradient-to-r from-rosegold to-peach text-white px-8 py-4 rounded-full font-bold text-lg shadow-lg shadow-rosegold/30 hover:shadow-rosegold/50 transition-all duration-300 hover:-translate-y-1 flex items-center gap-3 overflow-hidden cursor-pointer"
+                            className="group relative px-10 py-4 bg-gradient-to-b from-velvet to-red-950 rounded-md shadow-[0_0_30px_rgba(225,29,72,0.2)] hover:shadow-[0_0_50px_rgba(225,29,72,0.4)] transition-all duration-700 ease-out overflow-hidden"
                         >
-                            <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-                            <Heart className="w-6 h-6 fill-current animate-heartbeat" />
-                            <span className="relative z-10">Create Our Room</span>
+                            <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                            <span className="relative z-10 font-heading font-medium text-lg tracking-wide text-white/90 group-hover:text-white transition-colors">
+                                Enter Private Suite
+                            </span>
                         </button>
 
-                        {/* Secondary Action */}
-                        <div className="flex items-center bg-white/40 backdrop-blur-md rounded-full p-1.5 border border-white/50 shadow-sm focus-within:ring-2 focus-within:ring-rosegold/50 transition-all">
-                            <input
-                                type="text"
-                                value={partnerCode}
-                                onChange={(e) => setPartnerCode(e.target.value)}
-                                onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
-                                placeholder="Enter partner code..."
-                                className="bg-transparent border-none outline-none px-4 py-2 text-midnight placeholder:text-midnight/50 font-cute w-48"
-                            />
-                            <button
-                                onClick={joinRoom}
-                                className="bg-white/60 hover:bg-white text-midnight px-6 py-2.5 rounded-full font-semibold text-sm transition-colors flex items-center gap-2 cursor-pointer"
-                            >
-                                Join Them <ArrowRight className="w-4 h-4" />
-                            </button>
+                        {/* Divider (Visual) */}
+                        <div className="hidden md:block w-px h-12 bg-white/10" />
+
+                        {/* Secondary Input */}
+                        <div className="flex flex-col items-start gap-2 group">
+                            <div className="relative flex items-center">
+                                <input
+                                    type="text"
+                                    value={partnerCode}
+                                    onChange={(e) => setPartnerCode(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && joinRoom()}
+                                    placeholder="HAVE A CODE?"
+                                    className="bg-transparent border-b border-white/20 text-white placeholder-gray-600 py-2 px-2 w-48 focus:outline-none focus:border-gold/60 transition-all duration-500 font-sans text-sm tracking-widest uppercase text-center"
+                                />
+                                <button
+                                    onClick={joinRoom}
+                                    className="absolute right-0 text-gray-500 hover:text-gold transition-colors duration-300"
+                                >
+                                    <ArrowRight className="w-4 h-4" />
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <p className="mt-6 font-cute text-sm text-midnight/60 flex items-center gap-2">
-                        <Heart className="w-3 h-3 fill-rosegold text-rosegold" /> Made for love
-                    </p>
                 </div>
 
-                {/* Why Us Section */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl px-4">
-                    {/* Card 1 */}
-                    <FeatureCard
-                        icon={<Film className="w-8 h-8 text-lavender" />}
-                        title="Cinema for Two"
-                        text="Dim the lights. Watch movies in perfect sync with HD screen sharing."
-                        delay="0s"
-                    />
-                    {/* Card 2 */}
-                    <FeatureCard
-                        icon={<Lock className="w-8 h-8 text-rosegold" />}
-                        title="Just Us"
-                        text="No group calls, no unwanted guests. A locked room strictly for two."
-                        delay="1s"
-                    />
-                    {/* Card 3 */}
-                    <FeatureCard
-                        icon={<Camera className="w-8 h-8 text-peach" />}
-                        title="Memory Snaps"
-                        text="Capture cute moments in custom frames while you hang out."
-                        delay="2s"
-                    />
+                {/* Features Grid (Bento Style) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-4xl animate-fade-in-up" style={{ animationDelay: '0.5s' }}>
+
+                    {/* Feature 1: The Theatre */}
+                    <div className="group bg-glass-sm backdrop-blur-md border border-white/5 p-8 rounded-lg hover:bg-glass-md transition-all duration-700 hover:border-white/10">
+                        <div className="mb-6 text-gold/70 group-hover:text-gold transition-colors duration-700">
+                            <Monitor className="w-6 h-6 stroke-[1]" />
+                        </div>
+                        <h3 className="font-heading text-xl text-white mb-3">4K Sync Theatre</h3>
+                        <p className="font-sans text-gray-400 font-light leading-relaxed text-sm">
+                            Invisible technology. Watch movies in perfect synchronization with ultra-low latency. The focus is on the shared experience, not the buffering.
+                        </p>
+                    </div>
+
+                    {/* Feature 2: The Privacy */}
+                    <div className="group bg-glass-sm backdrop-blur-md border border-white/5 p-8 rounded-lg hover:bg-glass-md transition-all duration-700 hover:border-white/10">
+                        <div className="mb-6 text-gold/70 group-hover:text-gold transition-colors duration-700">
+                            <Lock className="w-6 h-6 stroke-[1]" />
+                        </div>
+                        <h3 className="font-heading text-xl text-white mb-3">End-to-End Intimacy</h3>
+                        <p className="font-sans text-gray-400 font-light leading-relaxed text-sm">
+                            Your room is ephemeral and encrypted. No logs, no history. Just a secure, secluded space for two.
+                        </p>
+                    </div>
+
+                </div>
+
+                {/* Footer Note */}
+                <div className="mt-24 mb-8 text-center opacity-30 hover:opacity-60 transition-opacity duration-700">
+                    <p className="font-cinzel text-xs tracking-[0.3em] text-white">
+                        DESIGNED FOR LOVE IN THE DIGITAL AGE
+                    </p>
                 </div>
 
             </div>
         </div>
     );
 };
-
-const FeatureCard = ({ icon, title, text, delay }) => (
-    <div
-        className="bg-cream/20 backdrop-blur-xl border border-white/30 p-8 rounded-[2rem] shadow-lg hover:shadow-xl transition-all duration-500 hover:-translate-y-2 animate-float-bob"
-        style={{ animationDelay: delay }}
-    >
-        <div className="bg-white/50 w-16 h-16 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
-            {icon}
-        </div>
-        <h3 className="font-heading font-semibold text-xl mb-3 text-midnight">{title}</h3>
-        <p className="font-sans text-midnight/70 leading-relaxed">{text}</p>
-    </div>
-);
 
 export default LandingPage;
