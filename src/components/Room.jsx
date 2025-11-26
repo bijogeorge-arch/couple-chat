@@ -4,6 +4,9 @@ import io from 'socket.io-client';
 import Peer from 'simple-peer';
 import { Mic, MicOff, Video, VideoOff, Phone, Eye, EyeOff, Projector, Settings, Heart, Camera } from 'lucide-react';
 import html2canvas from 'html2canvas';
+import ChatSidebar from './chat/ChatSidebar';
+import ConnectionQuality from './network/ConnectionQuality';
+import RoomPassword from './security/RoomPassword';
 
 const Room = () => {
     const { roomId } = useParams();
@@ -26,6 +29,11 @@ const Room = () => {
     const [elapsedTime, setElapsedTime] = useState("00:00:00");
     const [showReactionsMenu, setShowReactionsMenu] = useState(false);
     const [partnerDisconnected, setPartnerDisconnected] = useState(false);
+
+    // Password & Security
+    const [showPasswordModal, setShowPasswordModal] = useState(false);
+    const [isRoomCreator, setIsRoomCreator] = useState(false);
+    const [isAuthenticated, setIsAuthenticated] = useState(false);
 
     const myVideo = useRef();
     const partnerVideo = useRef();
@@ -822,6 +830,26 @@ const Room = () => {
                 >
                     <Eye size={24} />
                 </button>
+            )}
+
+            {/* Connection Quality Indicator */}
+            {!waiting && !partnerDisconnected && (
+                <div className="fixed top-4 left-4 md:top-8 md:left-8 z-50">
+                    <ConnectionQuality
+                        peerConnection={connectionRef.current?._pc}
+                        isConnected={!waiting && !partnerDisconnected}
+                    />
+                </div>
+            )}
+
+            {/* Chat Sidebar */}
+            {!waiting && !partnerDisconnected && (
+                <ChatSidebar
+                    socket={socketRef.current}
+                    roomId={roomId}
+                    userId={socketRef.current?.id}
+                    partnerName="Your Love"
+                />
             )}
 
         </div>

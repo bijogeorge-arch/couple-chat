@@ -16,8 +16,33 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3001;
 
+// Store room passwords in memory (session-based)
+const roomPasswords = new Map();
+
 io.on('connection', (socket) => {
     console.log(`User Connected: ${socket.id}`);
+
+    // Room password setup
+    socket.on('set-room-password', ({ roomId, password }) => {
+        if (password) {
+            roomPasswords.set(roomId, password);
+            console.log(`Password set for room ${roomId}`);
+        }
+    });
+
+    // Verify room password
+    socket.on('verify-room-password', ({ roomId, password }, callback) => {
+        const storedPassword = roomPasswords.get(roomId);
+
+        if (!storedPassword) {
+            // No password set for this room
+            callback({ success: true });
+        } else if (storedPassword === password) {
+            callback({ success: true });
+        } else {
+            callback({ success: false, error: 'Incorrect password' });
+        }
+    });
 
     socket.on('join-room', (roomId) => {
         const room = io.sockets.adapter.rooms.get(roomId);
@@ -62,6 +87,58 @@ io.on('connection', (socket) => {
 
     socket.on('change-theme', (payload) => {
         io.to(payload.roomId).emit('update-theme', payload);
+    });
+
+    // Chat messaging
+    socket.on('send-message', (payload) => {
+        socket.to(payload.roomId).emit('receive-message', payload);
+    });
+
+    // Typing indicators
+    socket.on('typing-start', (payload) => {
+        socket.to(payload.roomId).emit('typing-start', payload);
+    });
+
+    socket.on('typing-stop', (payload) => {
+        socket.to(payload.roomId).emit('typing-stop', payload);
+    });
+
+    // Kick user
+    socket.on('kick-user', ({ roomId, userId }) => {
+        io.to(userId).emit('kicked-from-room');
+        const targetSocket = io.sockets.sockets.get(userId);
+        if (targetSocket) {
+            targetSocket.leave(roomId);
+        }
+    });
+
+    // Synchronized Playback
+    socket.on('play-video', (payload) => {
+        socket.to(payload.roomId).emit('play-video', payload);
+    });
+
+    socket.on('pause-video', (payload) => {
+        socket.to(payload.roomId).emit('pause-video', payload);
+    });
+
+    socket.on('seek-video', (payload) => {
+        socket.to(payload.roomId).emit('seek-video', payload);
+    });
+
+    socket.on('sync-request', (payload) => {
+        socket.to(payload.roomId).emit('sync-request', payload);
+    });
+
+    socket.on('sync-response', (payload) => {
+        socket.to(payload.roomId).emit('sync-response', payload);
+    });
+
+    socket.on('countdown-start', (payload) => {
+        io.to(payload.roomId).emit('countdown-start', payload);
+    });
+
+    socket.on('video-url-change', (payload) => {
+        socket.to(payload.roomId).emit('video-url-change', payload);
     });
 
     socket.on('disconnecting', () => {

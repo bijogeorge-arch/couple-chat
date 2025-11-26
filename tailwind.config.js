@@ -38,8 +38,13 @@ export default {
                 'float-bob': 'floatBob 6s ease-in-out infinite',
                 'fade-in-up': 'fadeInUp 1s ease-out forwards',
                 'fade-in-slow': 'fadeIn 1.5s ease-out forwards',
+                'fade-in-down': 'fadeInDown 0.5s ease-out forwards',
+                'slide-up': 'slideUp 0.3s ease-out forwards',
                 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
                 'orb-float': 'orbFloat 20s infinite linear',
+                'ripple': 'ripple 0.6s ease-out',
+                'confetti-fall': 'confettiFall 3s ease-out forwards',
+                'fade-in': 'fadeIn 0.5s ease-out forwards',
             },
             keyframes: {
                 heartbeat: {
@@ -75,12 +80,31 @@ export default {
                     '0%': { opacity: '0' },
                     '100%': { opacity: '1' },
                 },
+                fadeInDown: {
+                    '0%': { opacity: '0', transform: 'translateY(-20px)' },
+                    '100%': { opacity: '1', transform: 'translateY(0)' },
+                },
+                slideUp: {
+                    '0%': { transform: 'translateY(100%)' },
+                    '100%': { transform: 'translateY(0)' },
+                },
                 orbFloat: {
                     '0%': { transform: 'translate(0, 0)' },
                     '33%': { transform: 'translate(30px, -50px)' },
                     '66%': { transform: 'translate(-20px, 20px)' },
                     '100%': { transform: 'translate(0, 0)' },
-                }
+                },
+                ripple: {
+                    '0%': { transform: 'scale(0)', opacity: '1' },
+                    '100%': { transform: 'scale(4)', opacity: '0' },
+                },
+                confettiFall: {
+                    '0%': { transform: 'translateY(0) rotate(0deg)', opacity: '1' },
+                    '100%': {
+                        transform: 'translateY(100vh) translateX(calc(var(--velocity-x) * 100px)) rotate(720deg)',
+                        opacity: '0'
+                    },
+                },
             }
         },
     },
