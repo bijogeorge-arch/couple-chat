@@ -5,7 +5,20 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   define: {
-    global: 'window',
-    'process.env': {},
+    global: 'globalThis',
+  },
+  resolve: {
+    alias: {
+      stream: 'stream-browserify',
+      util: 'util',
+      process: 'process/browser',
+    },
+  },
+  optimizeDeps: {
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
   },
 })

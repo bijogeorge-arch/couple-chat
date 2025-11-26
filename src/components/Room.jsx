@@ -144,7 +144,13 @@ const Room = () => {
         const peer = new Peer({
             initiator: true,
             trickle: true,
-            stream: currentStream
+            stream: currentStream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                ]
+            }
         });
 
         peer.on('signal', (data) => {
@@ -163,6 +169,10 @@ const Room = () => {
             }
         });
 
+        peer.on('error', (err) => {
+            console.error('Peer connection error:', err);
+        });
+
         connectionRef.current = peer;
     };
 
@@ -172,7 +182,13 @@ const Room = () => {
         const peer = new Peer({
             initiator: false,
             trickle: true,
-            stream: currentStream
+            stream: currentStream,
+            config: {
+                iceServers: [
+                    { urls: 'stun:stun.l.google.com:19302' },
+                    { urls: 'stun:stun1.l.google.com:19302' },
+                ]
+            }
         });
 
         peer.on('signal', (data) => {
@@ -188,6 +204,10 @@ const Room = () => {
             if (partnerVideo.current) {
                 partnerVideo.current.srcObject = remoteStream;
             }
+        });
+
+        peer.on('error', (err) => {
+            console.error('Peer connection error:', err);
         });
 
         peer.signal(payload.signal);
