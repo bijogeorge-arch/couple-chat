@@ -177,6 +177,14 @@ const Room = () => {
                     cinemaPipVideo.current.srcObject = cameraStreamRef.current;
                 }
             }
+        } else {
+            // Not in cinema mode - restore normal video feeds
+            if (myVideo.current && cameraStreamRef.current) {
+                myVideo.current.srcObject = cameraStreamRef.current;
+            }
+            if (partnerVideo.current && partnerStream) {
+                partnerVideo.current.srcObject = partnerStream;
+            }
         }
     }, [isCinemaMode, isScreenSharing, partnerStream]);
 
@@ -335,7 +343,9 @@ const Room = () => {
         }
     };
 
-    const stopScreenShare = () => {
+    const stopScreenShare = async () => {
+        console.log('Stopping screen share...');
+
         // Stop screen stream
         if (screenStreamRef.current) {
             screenStreamRef.current.getTracks().forEach(track => track.stop());
@@ -349,7 +359,7 @@ const Room = () => {
             console.log('Audio context closed');
         }
 
-        // Restore camera stream
+        // Restore camera stream to peer connection
         if (connectionRef.current && connectionRef.current._pc && cameraStreamRef.current) {
             const senders = connectionRef.current._pc.getSenders();
             const videoTrack = cameraStreamRef.current.getVideoTracks()[0];
@@ -358,24 +368,36 @@ const Room = () => {
             const videoSender = senders.find(s => s.track && s.track.kind === 'video');
             const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
 
-            if (videoSender && videoTrack) {
-                videoSender.replaceTrack(videoTrack);
-                console.log('Video track restored to camera');
-            }
-            if (audioSender && audioTrack) {
-                audioSender.replaceTrack(audioTrack);
-                console.log('Audio track restored to microphone');
+            try {
+                if (videoSender && videoTrack) {
+                    await videoSender.replaceTrack(videoTrack);
+                    console.log('Video track restored to camera');
+                }
+                if (audioSender && audioTrack) {
+                    await audioSender.replaceTrack(audioTrack);
+                    console.log('Audio track restored to microphone');
+                }
+            } catch (err) {
+                console.error('Error restoring tracks:', err);
             }
         }
 
-        // Restore local video display
-        if (myVideo.current && cameraStreamRef.current) {
-            myVideo.current.srcObject = cameraStreamRef.current;
-        }
-
+        // Update state to exit cinema mode
         setIsScreenSharing(false);
         setIsCinemaMode(false);
         socketRef.current.emit('cinema-mode-change', { roomId, mode: false });
+
+        // Force update video elements after a brief delay
+        setTimeout(() => {
+            if (myVideo.current && cameraStreamRef.current) {
+                myVideo.current.srcObject = cameraStreamRef.current;
+                console.log('My video restored');
+            }
+            if (partnerVideo.current && partnerStream) {
+                partnerVideo.current.srcObject = partnerStream;
+                console.log('Partner video restored');
+            }
+        }, 100);
     };
 
     const toggleMute = () => {
@@ -580,8 +602,8 @@ const Room = () => {
                 {isCinemaMode ? (
                     <>
                         {/* MAIN SCREEN (The Movie) */}
-                        <div className="relative w-full h-[85vh] flex items-center justify-center z-10">
-                            <div className="relative w-full h-full max-w-[90%] max-h-[85vh] aspect-video bg-black rounded-2xl shadow-[0_0_100px_rgba(255,255,255,0.1)] overflow-hidden border border-white/10">
+                        <div className="relative w-full h-[70vh] md:h-[85vh] flex items-center justify-center z-10">
+                            <div className="relative w-full h-full max-w-[95%] md:max-w-[90%] max-h-[70vh] md:max-h-[85vh] aspect-video bg-black rounded-xl md:rounded-2xl shadow-[0_0_100px_rgba(255,255,255,0.1)] overflow-hidden border border-white/10">
                                 <video
                                     playsInline
                                     ref={cinemaMainVideo}
@@ -593,14 +615,14 @@ const Room = () => {
                         </div>
 
                         {/* PiP Container */}
-                        <div className="fixed bottom-24 right-8 flex gap-4 z-50">
-                            <div className="w-32 h-32 rounded-full border-2 border-lavender/50 overflow-hidden shadow-lg bg-black relative">
+                        <div className="fixed bottom-20 md:bottom-24 right-4 md:right-8 flex gap-4 z-50">
+                            <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-2 border-lavender/50 overflow-hidden shadow-lg bg-black relative">
                                 <video
                                     playsInline
                                     ref={cinemaPipVideo}
                                     autoPlay
                                     muted={!isScreenSharing}
-                                    className="w-full h-full object-cover"
+                                    className={`w-full h-full object-cover ${!isScreenSharing ? 'scale-x-[-1]' : ''}`}
                                 />
                             </div>
                         </div>
@@ -609,31 +631,31 @@ const Room = () => {
                     /* NORMAL LAYOUT */
                     <>
                         {/* My Video */}
-                        <div className={`relative transition-all duration-500 ${waiting ? 'w-full md:w-2/3 aspect-video' : 'w-full md:w-1/2 aspect-[4/3]'}`}>
-                            <div className="absolute inset-0 bg-lavender/10 rounded-[30px] blur-xl transform scale-105"></div>
+                        <div className={`relative transition-all duration-500 ${waiting ? 'w-full md:w-2/3 aspect-video' : 'w-full md:w-1/2 aspect-[3/4] md:aspect-[4/3]'}`}>
+                            <div className="absolute inset-0 bg-lavender/10 rounded-[20px] md:rounded-[30px] blur-xl transform scale-105"></div>
                             <video
                                 playsInline
                                 muted
                                 ref={myVideo}
                                 autoPlay
-                                className="relative w-full h-full object-cover rounded-[30px] border-2 border-lavender/30 shadow-2xl z-10 bg-midnight/50"
+                                className="relative w-full h-full object-cover rounded-[20px] md:rounded-[30px] border-2 border-lavender/30 shadow-2xl z-10 bg-midnight/50 scale-x-[-1]"
                             />
-                            <div className="absolute bottom-4 left-4 z-20 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-white/10">
+                            <div className="absolute bottom-3 left-3 md:bottom-4 md:left-4 z-20 bg-black/40 backdrop-blur-sm px-2 py-1 md:px-3 md:py-1 rounded-full border border-white/10">
                                 <span className="text-xs font-medium text-white/80">You</span>
                             </div>
                         </div>
 
                         {/* Partner Video */}
                         {!waiting && (
-                            <div className="relative w-full md:w-1/2 aspect-[4/3] animate-fade-in">
-                                <div className="absolute inset-0 bg-rosegold/10 rounded-[30px] blur-xl transform scale-105"></div>
+                            <div className="relative w-full md:w-1/2 aspect-[3/4] md:aspect-[4/3] animate-fade-in">
+                                <div className="absolute inset-0 bg-rosegold/10 rounded-[20px] md:rounded-[30px] blur-xl transform scale-105"></div>
                                 <video
                                     playsInline
                                     ref={partnerVideo}
                                     autoPlay
-                                    className="relative w-full h-full object-cover rounded-[30px] border-2 border-rosegold/30 shadow-2xl z-10 bg-midnight/50"
+                                    className="relative w-full h-full object-cover rounded-[20px] md:rounded-[30px] border-2 border-rosegold/30 shadow-2xl z-10 bg-midnight/50"
                                 />
-                                <div className="absolute bottom-4 left-4 z-20 bg-black/40 backdrop-blur-sm px-3 py-1 rounded-full border border-white/10">
+                                <div className="absolute bottom-3 left-3 md:bottom-4 md:left-4 z-20 bg-black/40 backdrop-blur-sm px-2 py-1 md:px-3 md:py-1 rounded-full border border-white/10">
                                     <span className="text-xs font-medium text-white/80">Partner</span>
                                 </div>
                             </div>
@@ -677,39 +699,39 @@ const Room = () => {
             </div>
 
             {/* Controls Bar */}
-            <div className={`fixed bottom-8 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ${isUiHidden ? 'translate-y-24 opacity-0' : 'translate-y-0 opacity-100'}`}>
-                <div className={`flex items-center gap-4 backdrop-blur-lg border px-6 py-3 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.3)] ${theme === 'minimal' ? 'bg-white/80 border-gray-200' : 'bg-white/10 border-white/20'}`}>
+            <div className={`fixed bottom-4 md:bottom-8 left-1/2 transform -translate-x-1/2 z-50 transition-all duration-300 ${isUiHidden ? 'translate-y-24 opacity-0' : 'translate-y-0 opacity-100'} max-w-[95vw]`}>
+                <div className={`flex items-center gap-2 md:gap-4 backdrop-blur-lg border px-3 md:px-6 py-2 md:py-3 rounded-full shadow-[0_8px_32px_rgba(0,0,0,0.3)] ${theme === 'minimal' ? 'bg-white/80 border-gray-200' : 'bg-white/10 border-white/20'}`}>
 
                     <button
                         onClick={toggleMute}
-                        className={`p-4 rounded-full transition-all duration-300 ${isMuted ? 'bg-red-500/80 text-white hover:bg-red-600' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
+                        className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${isMuted ? 'bg-red-500/80 text-white hover:bg-red-600' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
                     >
-                        {isMuted ? <MicOff size={24} /> : <Mic size={24} />}
+                        {isMuted ? <MicOff className="w-5 h-5 md:w-6 md:h-6" /> : <Mic className="w-5 h-5 md:w-6 md:h-6" />}
                     </button>
 
                     <button
                         onClick={toggleVideo}
-                        className={`p-4 rounded-full transition-all duration-300 ${isVideoOff ? 'bg-red-500/80 text-white hover:bg-red-600' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
+                        className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${isVideoOff ? 'bg-red-500/80 text-white hover:bg-red-600' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
                     >
-                        {isVideoOff ? <VideoOff size={24} /> : <Video size={24} />}
+                        {isVideoOff ? <VideoOff className="w-5 h-5 md:w-6 md:h-6" /> : <Video className="w-5 h-5 md:w-6 md:h-6" />}
                     </button>
 
                     <button
                         onClick={isScreenSharing ? stopScreenShare : startScreenShare}
-                        className={`p-4 rounded-full transition-all duration-300 ${isScreenSharing ? 'bg-peach text-midnight hover:bg-peach/80' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
+                        className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${isScreenSharing ? 'bg-peach text-midnight hover:bg-peach/80' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
                         title="Watch Movie"
                     >
-                        <Projector size={24} />
+                        <Projector className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
                     {/* Reactions Button */}
                     <div className="relative">
                         <button
                             onClick={() => setShowReactionsMenu(!showReactionsMenu)}
-                            className={`p-4 rounded-full transition-all duration-300 ${showReactionsMenu ? 'bg-rosegold text-white' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
+                            className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${showReactionsMenu ? 'bg-rosegold text-white' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
                             title="React"
                         >
-                            <Heart size={24} className={showReactionsMenu ? 'fill-current' : ''} />
+                            <Heart className={`w-5 h-5 md:w-6 md:h-6 ${showReactionsMenu ? 'fill-current' : ''}`} />
                         </button>
 
                         {/* Reactions Menu */}
@@ -731,20 +753,20 @@ const Room = () => {
                     {/* Memory Snap Button */}
                     <button
                         onClick={handleMemorySnap}
-                        className={`p-4 rounded-full transition-all duration-300 ${theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20'} hover:scale-110`}
+                        className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20'} hover:scale-110 hidden md:flex`}
                         title="Memory Snap"
                     >
-                        <Camera size={24} />
+                        <Camera className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
 
                     {/* Settings Button */}
                     <div className="relative">
                         <button
                             onClick={() => setShowSettings(!showSettings)}
-                            className={`p-4 rounded-full transition-all duration-300 ${showSettings ? 'bg-lavender text-midnight' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110`}
+                            className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${showSettings ? 'bg-lavender text-midnight' : (theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20')} hover:scale-110 hidden md:flex`}
                             title="Settings"
                         >
-                            <Settings size={24} />
+                            <Settings className="w-5 h-5 md:w-6 md:h-6" />
                         </button>
 
                         {/* Settings Menu (Theme Picker) */}
@@ -777,17 +799,17 @@ const Room = () => {
 
                     <button
                         onClick={endCall}
-                        className="p-4 rounded-full bg-red-500 text-white hover:bg-red-600 hover:scale-110 transition-all duration-300 shadow-lg shadow-red-500/30"
+                        className="p-2.5 md:p-4 rounded-full bg-red-500 text-white hover:bg-red-600 hover:scale-110 transition-all duration-300 shadow-lg shadow-red-500/30"
                     >
-                        <Phone size={24} className="fill-current" />
+                        <Phone className="w-5 h-5 md:w-6 md:h-6 fill-current" />
                     </button>
 
                     <button
                         onClick={toggleUi}
-                        className={`p-4 rounded-full transition-all duration-300 ${theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20'} hover:scale-110`}
+                        className={`p-2.5 md:p-4 rounded-full transition-all duration-300 ${theme === 'minimal' ? 'bg-gray-100 text-gray-800 hover:bg-gray-200' : 'bg-white/10 text-white hover:bg-white/20'} hover:scale-110 hidden md:flex`}
                         title="Hide UI"
                     >
-                        <EyeOff size={24} />
+                        <EyeOff className="w-5 h-5 md:w-6 md:h-6" />
                     </button>
                 </div>
             </div>
