@@ -71,26 +71,32 @@ const Room = () => {
                     console.log("User connected: " + userId);
                     partnerIdRef.current = userId;
                     setPartnerDisconnected(false);
-                    callUser(userId, currentStream);
+
+                    // Only call if we don't already have an active connection
+                    if (!connectionRef.current || connectionRef.current.destroyed) {
+                        callUser(userId, currentStream);
+                    }
                 });
 
                 socketRef.current.on('offer', (payload) => {
                     console.log("Received offer from: " + payload.caller);
                     partnerIdRef.current = payload.caller;
                     setPartnerDisconnected(false);
-                    answerCall(payload, currentStream);
-                });
 
-                socketRef.current.on('answer', (payload) => {
-                    console.log("Received answer");
-                    if (connectionRef.current) {
-                        connectionRef.current.signal(payload.signal);
+                    // Only answer if we don't already have an active connection
+                    if (!connectionRef.current || connectionRef.current.destroyed) {
+                        answerCall(payload, currentStream);
                     }
                 });
 
-                socketRef.current.on('ice-candidate', (payload) => {
-                    if (connectionRef.current) {
-                        connectionRef.current.signal(payload.candidate);
+                socketRef.current.on('answer', (payload) => {
+                    console.log("Received answer from:", payload.caller);
+                    if (connectionRef.current && !connectionRef.current.destroyed) {
+                        try {
+                            connectionRef.current.signal(payload.signal);
+                        } catch (err) {
+                            console.error('Error processing answer:', err);
+                        }
                     }
                 });
 
@@ -107,8 +113,14 @@ const Room = () => {
                 });
 
                 socketRef.current.on('user-disconnected', () => {
+                    console.log('Partner disconnected');
                     setPartnerDisconnected(true);
-                    // We don't set waiting to true, because we want to show the specific "Miss You" screen
+                    setPartnerStream(null);
+                    // Clean up the peer connection
+                    if (connectionRef.current) {
+                        connectionRef.current.destroy();
+                        connectionRef.current = null;
+                    }
                 });
 
             })
@@ -197,6 +209,8 @@ const Room = () => {
     }, [isCinemaMode, isScreenSharing, partnerStream]);
 
     const callUser = (id, currentStream) => {
+        console.log('Calling user:', id);
+
         const peer = new Peer({
             initiator: true,
             trickle: true,
@@ -205,32 +219,47 @@ const Room = () => {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
                 ]
             }
         });
 
         peer.on('signal', (data) => {
-            if (data.type === 'offer') {
-                socketRef.current.emit('offer', { target: id, caller: socketRef.current.id, signal: data });
-            } else if (data.candidate) {
-                socketRef.current.emit('ice-candidate', { target: id, candidate: data });
-            }
+            console.log('Sending signal:', data.type || 'candidate');
+            socketRef.current.emit('offer', { target: id, caller: socketRef.current.id, signal: data });
         });
 
         peer.on('stream', (remoteStream) => {
-            console.log("Received remote stream");
+            console.log("Received remote stream from partner");
             setPartnerStream(remoteStream);
             setWaiting(false);
         });
 
+        peer.on('connect', () => {
+            console.log('Peer connection established!');
+        });
+
+        peer.on('close', () => {
+            console.log('Peer connection closed');
+            setPartnerDisconnected(true);
+        });
+
         peer.on('error', (err) => {
             console.error('Peer connection error:', err);
+            // Try to reconnect after a delay
+            setTimeout(() => {
+                if (partnerIdRef.current && cameraStreamRef.current) {
+                    console.log('Attempting to reconnect...');
+                    callUser(partnerIdRef.current, cameraStreamRef.current);
+                }
+            }, 2000);
         });
 
         connectionRef.current = peer;
     };
 
     const answerCall = (payload, currentStream) => {
+        console.log('Answering call from:', payload.caller);
         setWaiting(false);
 
         const peer = new Peer({
@@ -241,28 +270,40 @@ const Room = () => {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
+                    { urls: 'stun:stun2.l.google.com:19302' },
                 ]
             }
         });
 
         peer.on('signal', (data) => {
-            if (data.type === 'answer') {
-                socketRef.current.emit('answer', { target: payload.caller, caller: socketRef.current.id, signal: data });
-            } else if (data.candidate) {
-                socketRef.current.emit('ice-candidate', { target: payload.caller, candidate: data });
-            }
+            console.log('Sending answer signal:', data.type || 'candidate');
+            socketRef.current.emit('answer', { target: payload.caller, caller: socketRef.current.id, signal: data });
         });
 
         peer.on('stream', (remoteStream) => {
-            console.log("Received remote stream");
+            console.log("Received remote stream from caller");
             setPartnerStream(remoteStream);
+        });
+
+        peer.on('connect', () => {
+            console.log('Peer connection established!');
+        });
+
+        peer.on('close', () => {
+            console.log('Peer connection closed');
+            setPartnerDisconnected(true);
         });
 
         peer.on('error', (err) => {
             console.error('Peer connection error:', err);
         });
 
-        peer.signal(payload.signal);
+        try {
+            peer.signal(payload.signal);
+        } catch (err) {
+            console.error('Error signaling peer:', err);
+        }
+
         connectionRef.current = peer;
     };
 

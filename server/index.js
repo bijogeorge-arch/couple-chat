@@ -66,15 +66,13 @@ io.on('connection', (socket) => {
     });
 
     socket.on('offer', (payload) => {
+        console.log(`Relaying offer from ${payload.caller} to ${payload.target}`);
         io.to(payload.target).emit('offer', payload);
     });
 
     socket.on('answer', (payload) => {
+        console.log(`Relaying answer from ${payload.caller} to ${payload.target}`);
         io.to(payload.target).emit('answer', payload);
-    });
-
-    socket.on('ice-candidate', (payload) => {
-        io.to(payload.target).emit('ice-candidate', payload);
     });
 
     socket.on('cinema-mode-change', ({ roomId, mode }) => {
