@@ -34,6 +34,8 @@ const Room = () => {
     const partnerIdRef = useRef();
     const timerRef = useRef();
     const containerRef = useRef();
+    const cameraStreamRef = useRef(null); // Store original camera stream
+    const screenStreamRef = useRef(null); // Store screen share stream
 
     useEffect(() => {
         const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001';
@@ -42,6 +44,7 @@ const Room = () => {
         navigator.mediaDevices.getUserMedia({ video: true, audio: true })
             .then((currentStream) => {
                 setStream(currentStream);
+                cameraStreamRef.current = currentStream; // Store camera stream
                 if (myVideo.current) {
                     myVideo.current.srcObject = currentStream;
                 }
@@ -103,12 +106,13 @@ const Room = () => {
             });
 
         return () => {
-            socketRef.current.disconnect();
-            if (connectionRef.current) {
-                connectionRef.current.destroy();
+            if (socketRef.current) socketRef.current.disconnect();
+            if (connectionRef.current) connectionRef.current.destroy();
+            if (cameraStreamRef.current) {
+                cameraStreamRef.current.getTracks().forEach(track => track.stop());
             }
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
+            if (screenStreamRef.current) {
+                screenStreamRef.current.getTracks().forEach(track => track.stop());
             }
             if (timerRef.current) clearInterval(timerRef.current);
         };
@@ -140,6 +144,13 @@ const Room = () => {
         }
     }, [waiting, partnerDisconnected]);
 
+    // Update partner video element when partnerStream changes
+    useEffect(() => {
+        if (partnerVideo.current && partnerStream) {
+            partnerVideo.current.srcObject = partnerStream;
+        }
+    }, [partnerStream]);
+
     const callUser = (id, currentStream) => {
         const peer = new Peer({
             initiator: true,
@@ -162,11 +173,9 @@ const Room = () => {
         });
 
         peer.on('stream', (remoteStream) => {
+            console.log("Received remote stream");
             setPartnerStream(remoteStream);
             setWaiting(false);
-            if (partnerVideo.current) {
-                partnerVideo.current.srcObject = remoteStream;
-            }
         });
 
         peer.on('error', (err) => {
@@ -200,10 +209,8 @@ const Room = () => {
         });
 
         peer.on('stream', (remoteStream) => {
+            console.log("Received remote stream");
             setPartnerStream(remoteStream);
-            if (partnerVideo.current) {
-                partnerVideo.current.srcObject = remoteStream;
-            }
         });
 
         peer.on('error', (err) => {
@@ -216,46 +223,56 @@ const Room = () => {
 
     const startScreenShare = async () => {
         try {
-            const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
-            const screenVideoTrack = screenStream.getVideoTracks()[0];
-            const screenAudioTrack = screenStream.getAudioTracks()[0];
+            const newScreenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+            screenStreamRef.current = newScreenStream;
+            const screenVideoTrack = newScreenStream.getVideoTracks()[0];
+            const screenAudioTrack = newScreenStream.getAudioTracks()[0];
 
-            const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-            const destination = audioContext.createMediaStreamDestination();
+            // Replace video track in peer connection
+            if (connectionRef.current && connectionRef.current._pc) {
+                const senders = connectionRef.current._pc.getSenders();
+                const videoSender = senders.find(s => s.track && s.track.kind === 'video');
 
-            if (stream && stream.getAudioTracks().length > 0) {
-                const micSource = audioContext.createMediaStreamSource(stream);
-                micSource.connect(destination);
-            }
-
-            if (screenAudioTrack) {
-                const screenSource = audioContext.createMediaStreamSource(screenStream);
-                screenSource.connect(destination);
-            }
-
-            const mixedAudioTrack = destination.stream.getAudioTracks()[0];
-
-            if (connectionRef.current) {
-                const oldVideoTrack = stream.getVideoTracks()[0];
-                connectionRef.current.replaceTrack(oldVideoTrack, screenVideoTrack, stream);
-
-                const oldAudioTrack = stream.getAudioTracks()[0];
-                if (oldAudioTrack) {
-                    connectionRef.current.replaceTrack(oldAudioTrack, mixedAudioTrack, stream);
+                if (videoSender && cameraStreamRef.current) {
+                    videoSender.replaceTrack(screenVideoTrack);
                 }
+
+                // Mix audio if screen has audio
+                if (screenAudioTrack && cameraStreamRef.current) {
+                    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    const destination = audioContext.createMediaStreamDestination();
+
+                    // Add mic audio
+                    if (cameraStreamRef.current.getAudioTracks().length > 0) {
+                        const micSource = audioContext.createMediaStreamSource(new MediaStream([cameraStreamRef.current.getAudioTracks()[0]]));
+                        micSource.connect(destination);
+                    }
+
+                    // Add screen audio
+                    const screenSource = audioContext.createMediaStreamSource(new MediaStream([screenAudioTrack]));
+                    screenSource.connect(destination);
+
+                    const mixedAudioTrack = destination.stream.getAudioTracks()[0];
+                    const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+                    if (audioSender) {
+                        audioSender.replaceTrack(mixedAudioTrack);
+                    }
+                }
+            }
+
+            // Update local video display
+            if (myVideo.current) {
+                myVideo.current.srcObject = newScreenStream;
             }
 
             setIsScreenSharing(true);
             setIsCinemaMode(true);
             socketRef.current.emit('cinema-mode-change', { roomId, mode: true });
 
+            // Handle screen share ending
             screenVideoTrack.onended = () => {
                 stopScreenShare();
             };
-
-            if (myVideo.current) {
-                myVideo.current.srcObject = screenStream;
-            }
 
         } catch (err) {
             console.error("Failed to share screen", err);
@@ -263,41 +280,47 @@ const Room = () => {
     };
 
     const stopScreenShare = () => {
+        // Stop screen stream
+        if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(track => track.stop());
+            screenStreamRef.current = null;
+        }
+
+        // Restore camera stream
+        if (connectionRef.current && connectionRef.current._pc && cameraStreamRef.current) {
+            const senders = connectionRef.current._pc.getSenders();
+            const videoTrack = cameraStreamRef.current.getVideoTracks()[0];
+            const audioTrack = cameraStreamRef.current.getAudioTracks()[0];
+
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video');
+            const audioSender = senders.find(s => s.track && s.track.kind === 'audio');
+
+            if (videoSender && videoTrack) videoSender.replaceTrack(videoTrack);
+            if (audioSender && audioTrack) audioSender.replaceTrack(audioTrack);
+        }
+
+        // Restore local video display
+        if (myVideo.current && cameraStreamRef.current) {
+            myVideo.current.srcObject = cameraStreamRef.current;
+        }
+
         setIsScreenSharing(false);
         setIsCinemaMode(false);
         socketRef.current.emit('cinema-mode-change', { roomId, mode: false });
-
-        navigator.mediaDevices.getUserMedia({ video: true, audio: true }).then((camStream) => {
-            const camVideoTrack = camStream.getVideoTracks()[0];
-            const camAudioTrack = camStream.getAudioTracks()[0];
-
-            if (connectionRef.current) {
-                const senders = connectionRef.current._pc.getSenders();
-                const videoSender = senders.find(s => s.track.kind === 'video');
-                const audioSender = senders.find(s => s.track.kind === 'audio');
-
-                if (videoSender) videoSender.replaceTrack(camVideoTrack);
-                if (audioSender) audioSender.replaceTrack(camAudioTrack);
-            }
-
-            if (myVideo.current) {
-                myVideo.current.srcObject = camStream;
-            }
-
-            setStream(camStream);
-        });
     };
 
     const toggleMute = () => {
-        if (stream) {
-            stream.getAudioTracks()[0].enabled = !stream.getAudioTracks()[0].enabled;
+        if (cameraStreamRef.current && cameraStreamRef.current.getAudioTracks().length > 0) {
+            const audioTrack = cameraStreamRef.current.getAudioTracks()[0];
+            audioTrack.enabled = !audioTrack.enabled;
             setIsMuted(!isMuted);
         }
     };
 
     const toggleVideo = () => {
-        if (stream) {
-            stream.getVideoTracks()[0].enabled = !stream.getVideoTracks()[0].enabled;
+        if (cameraStreamRef.current && cameraStreamRef.current.getVideoTracks().length > 0) {
+            const videoTrack = cameraStreamRef.current.getVideoTracks()[0];
+            videoTrack.enabled = !videoTrack.enabled;
             setIsVideoOff(!isVideoOff);
         }
     };
@@ -502,27 +525,15 @@ const Room = () => {
 
                         {/* PiP Container */}
                         <div className="fixed bottom-24 right-8 flex gap-4 z-50">
-                            {!isScreenSharing && (
-                                <div className="w-32 h-32 rounded-full border-2 border-lavender/50 overflow-hidden shadow-lg bg-black relative">
-                                    <video
-                                        playsInline
-                                        ref={partnerVideo}
-                                        autoPlay
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            )}
-                            {!isScreenSharing && (
-                                <div className="w-32 h-32 rounded-full border-2 border-lavender/50 overflow-hidden shadow-lg bg-black relative">
-                                    <video
-                                        playsInline
-                                        muted
-                                        ref={myVideo}
-                                        autoPlay
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-                            )}
+                            <div className="w-32 h-32 rounded-full border-2 border-lavender/50 overflow-hidden shadow-lg bg-black relative">
+                                <video
+                                    playsInline
+                                    ref={isScreenSharing ? partnerVideo : myVideo}
+                                    autoPlay
+                                    muted={!isScreenSharing}
+                                    className="w-full h-full object-cover"
+                                />
+                            </div>
                         </div>
                     </>
                 ) : (
