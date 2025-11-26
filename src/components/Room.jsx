@@ -29,6 +29,8 @@ const Room = () => {
 
     const myVideo = useRef();
     const partnerVideo = useRef();
+    const cinemaMainVideo = useRef(); // For cinema mode main screen
+    const cinemaPipVideo = useRef(); // For cinema mode PiP
     const socketRef = useRef();
     const connectionRef = useRef();
     const partnerIdRef = useRef();
@@ -150,6 +152,29 @@ const Room = () => {
             partnerVideo.current.srcObject = partnerStream;
         }
     }, [partnerStream]);
+
+    // Update cinema mode videos when screen sharing or streams change
+    useEffect(() => {
+        if (isCinemaMode) {
+            if (isScreenSharing) {
+                // I'm sharing: main screen shows my screen, PiP shows partner
+                if (cinemaMainVideo.current && myVideo.current?.srcObject) {
+                    cinemaMainVideo.current.srcObject = myVideo.current.srcObject;
+                }
+                if (cinemaPipVideo.current && partnerStream) {
+                    cinemaPipVideo.current.srcObject = partnerStream;
+                }
+            } else {
+                // Partner is sharing: main screen shows partner, PiP shows me
+                if (cinemaMainVideo.current && partnerStream) {
+                    cinemaMainVideo.current.srcObject = partnerStream;
+                }
+                if (cinemaPipVideo.current && cameraStreamRef.current) {
+                    cinemaPipVideo.current.srcObject = cameraStreamRef.current;
+                }
+            }
+        }
+    }, [isCinemaMode, isScreenSharing, partnerStream]);
 
     const callUser = (id, currentStream) => {
         const peer = new Peer({
@@ -515,7 +540,7 @@ const Room = () => {
                             <div className="relative w-full h-full max-w-[90%] max-h-[85vh] aspect-video bg-black rounded-2xl shadow-[0_0_100px_rgba(255,255,255,0.1)] overflow-hidden border border-white/10">
                                 <video
                                     playsInline
-                                    ref={isScreenSharing ? myVideo : partnerVideo}
+                                    ref={cinemaMainVideo}
                                     autoPlay
                                     muted={isScreenSharing}
                                     className="w-full h-full object-contain"
@@ -528,7 +553,7 @@ const Room = () => {
                             <div className="w-32 h-32 rounded-full border-2 border-lavender/50 overflow-hidden shadow-lg bg-black relative">
                                 <video
                                     playsInline
-                                    ref={isScreenSharing ? partnerVideo : myVideo}
+                                    ref={cinemaPipVideo}
                                     autoPlay
                                     muted={!isScreenSharing}
                                     className="w-full h-full object-cover"
